@@ -1,0 +1,75 @@
+// use prisma-8
+
+enum OrderStatus {
+  @@type("pg/text@1")
+  pending     = "pending"
+  completed   = "completed"
+  compensated = "compensated"
+}
+
+enum ReservationStatus {
+  @@type("pg/text@1")
+  reserved = "reserved"
+  released = "released"
+}
+
+enum PaymentStatus {
+  @@type("pg/text@1")
+  charged  = "charged"
+  refunded = "refunded"
+}
+
+model Product {
+  sku   String @id
+  name  String
+  stock Int
+
+  @@check(expression: sql`stock >= 0`, name: "product_stock_non_negative")
+}
+
+model Order {
+  id            String      @id
+  customerEmail String
+  sku           String
+  quantity      Int
+  amountCents   Int
+  status        OrderStatus
+  failureReason String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @onCreate(now()) @onUpdate(now())
+}
+
+model InventoryReservation {
+  id             String            @id @onCreate(uuid(7))
+  idempotencyKey String            @unique
+  orderId        String
+  sku            String
+  quantity       Int
+  status         ReservationStatus
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @onCreate(now()) @onUpdate(now())
+
+  @@index([orderId])
+}
+
+model Payment {
+  id             String        @id @onCreate(uuid(7))
+  idempotencyKey String        @unique
+  orderId        String
+  amountCents    Int
+  status         PaymentStatus
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @onCreate(now()) @onUpdate(now())
+
+  @@index([orderId])
+}
+
+model Shipment {
+  id             String   @id @onCreate(uuid(7))
+  idempotencyKey String   @unique
+  orderId        String
+  trackingNumber String
+  createdAt      DateTime @default(now())
+
+  @@index([orderId])
+}
